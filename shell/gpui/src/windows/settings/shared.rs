@@ -1,5 +1,5 @@
 use gpui::{
-    AnyElement, ClickEvent, InteractiveElement, IntoElement, ParentElement, SharedString,
+    AnyElement, ClickEvent, Div, InteractiveElement, IntoElement, ParentElement, SharedString,
     StatefulInteractiveElement, Styled, div, px, rgb,
 };
 
@@ -9,12 +9,34 @@ use crate::ui::icons::{self, glyph};
 
 pub(super) fn section_title(text: &'static str, t: &Theme) -> impl IntoElement {
     div()
+        .w_full()
         .text_size(px(18.))
         .text_color(rgb(t.fg))
         .pb(px(4.))
         .border_b_1()
         .border_color(rgb(t.border))
         .child(text)
+}
+
+pub(super) fn subsection_title(text: &'static str, t: &Theme) -> impl IntoElement {
+    div()
+        .w_full()
+        .pt(px(4.))
+        .text_size(px(11.))
+        .text_color(rgb(t.fg_faint))
+        .child(text)
+}
+
+pub(super) fn row_container(t: &Theme) -> Div {
+    div()
+        .flex()
+        .flex_row()
+        .items_center()
+        .w_full()
+        .gap(px(8.))
+        .px(px(8.))
+        .rounded_sm()
+        .bg(rgb(t.row_alt_bg))
 }
 
 pub(super) fn field_row(
@@ -26,6 +48,7 @@ pub(super) fn field_row(
     div()
         .flex()
         .flex_col()
+        .w_full()
         .gap(px(4.))
         .child(
             div()
@@ -33,6 +56,7 @@ pub(super) fn field_row(
                 .flex_row()
                 .items_center()
                 .justify_between()
+                .w_full()
                 .gap(px(12.))
                 .child(div().text_size(px(12.)).text_color(rgb(t.fg)).child(label))
                 .child(value),
@@ -48,6 +72,9 @@ pub(super) fn field_row(
 
 pub(super) fn current_value(value: &str, t: &Theme) -> AnyElement {
     div()
+        .max_w(px(360.))
+        .min_w_0()
+        .truncate()
         .text_size(px(12.))
         .text_color(rgb(t.fg_dim))
         .child(SharedString::from(value.to_owned()))

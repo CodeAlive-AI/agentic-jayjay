@@ -7,7 +7,7 @@ use gpui::{
 };
 use jayjay_core::{DiffHunk, FileTreeEntry};
 
-use super::row::{review_checkbox, row_bg, status_dot};
+use super::row::{file_name_opacity, review_checkbox, row_bg, status_dot};
 use crate::app::fonts;
 use crate::app::theme::Theme;
 use crate::repo::window::RepoWindow;
@@ -30,6 +30,7 @@ pub(super) fn is_entry_visible(
 #[allow(clippy::too_many_arguments)]
 pub(super) fn tree_body(
     hunks: Arc<Vec<DiffHunk>>,
+    visible_indices: Arc<Vec<usize>>,
     tree: Arc<Vec<FileTreeEntry>>,
     selected_ix: Option<usize>,
     collapsed: std::collections::HashSet<String>,
@@ -48,6 +49,7 @@ pub(super) fn tree_body(
         cx.processor(move |this, range: std::ops::Range<usize>, _window, cx| {
             let t = t.clone();
             let hunks = hunks.clone();
+            let visible_indices = visible_indices.clone();
             let tree = tree.clone();
             let collapsed = collapsed.clone();
             let change_id = change_id.clone();
@@ -55,7 +57,10 @@ pub(super) fn tree_body(
                 .map(|ix| {
                     let entry = &tree[ix];
                     if let Some(hunk_ix) = entry.hunk_index {
-                        let hunk_ix = hunk_ix as usize;
+                        let visible_hunk_ix = hunk_ix as usize;
+                        let Some(hunk_ix) = visible_indices.get(visible_hunk_ix).copied() else {
+                            return div().into_any_element();
+                        };
                         let is_selected = selected_ix == Some(hunk_ix);
                         if let Some(hunk) = hunks.get(hunk_ix) {
                             let path = hunk.path.clone();
@@ -136,7 +141,7 @@ where
 {
     let bg_row = row_bg(is_selected, ix, t);
     let indent = (entry.depth as f32) * 14.0;
-    let name_color = if reviewed { t.fg_faint } else { t.fg };
+    let name_opacity = file_name_opacity(show_review, reviewed);
     // Middle-elide the filename to the available width so it never wraps.
     let fixed_chrome = if show_review { 80.0 } else { 56.0 };
     let text_px = (column_width - fixed_chrome - indent).max(40.0);
@@ -172,7 +177,8 @@ where
                 .truncate()
                 .font_family(fonts::mono())
                 .text_size(px(12.))
-                .text_color(rgb(name_color))
+                .text_color(rgb(t.fg))
+                .opacity(name_opacity)
                 .child(SharedString::from(name)),
             t.row_border,
         ))

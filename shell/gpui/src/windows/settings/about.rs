@@ -1,16 +1,17 @@
+use crate::app::config::{self, AppConfig};
+use crate::app::theme::Theme;
+use crate::ui::icons::{self, LOGO_SVG, glyph};
 use gpui::{
     ClickEvent, InteractiveElement, IntoElement, ParentElement, SharedString,
     StatefulInteractiveElement, Styled, div, img, px, rgb,
 };
-use crate::app::theme::Theme;
-use crate::ui::icons::{self, LOGO_SVG, glyph};
 
 const APP_NAME: &str = "JayJay";
 const TAGLINE: &str = "A native GUI for Jujutsu";
 const SPONSOR_URL: &str = "https://github.com/sponsors/hewigovens";
 const GITHUB_URL: &str = "https://github.com/hewigovens/jayjay";
 
-pub(super) fn about_section(t: &Theme) -> impl IntoElement {
+pub(super) fn about_section(cfg: &AppConfig, t: &Theme) -> impl IntoElement {
     let version = format!("Version {} (GPUI Alpha)", env!("CARGO_PKG_VERSION"));
 
     div()
@@ -38,6 +39,11 @@ pub(super) fn about_section(t: &Theme) -> impl IntoElement {
                 .text_color(rgb(t.fg_faint))
                 .child(SharedString::from(version)),
         )
+        .child(about_toggle(
+            "Send anonymous usage stats",
+            cfg.telemetry.enabled,
+            t,
+        ))
         .child(
             div()
                 .flex()
@@ -91,4 +97,42 @@ fn link_button(
         })
         .child(icons::icon(glyph_str, 12., t.toggle_inactive_fg))
         .child(label)
+}
+
+fn about_toggle(label: &'static str, active: bool, t: &Theme) -> impl IntoElement {
+    let (bg, fg, icon) = if active {
+        (t.toggle_active_bg, t.toggle_active_fg, glyph::CHECK)
+    } else {
+        (t.toggle_inactive_bg, t.toggle_inactive_fg, glyph::DOT)
+    };
+    div()
+        .id(SharedString::from("about-telemetry"))
+        .debug_selector(|| "about-telemetry".to_owned())
+        .flex()
+        .flex_row()
+        .items_center()
+        .gap(px(8.))
+        .pt(px(6.))
+        .text_size(px(12.))
+        .text_color(rgb(t.fg_dim))
+        .child(label)
+        .child(
+            div()
+                .id(SharedString::from("about-telemetry-toggle"))
+                .flex()
+                .flex_row()
+                .items_center()
+                .gap(px(6.))
+                .px(px(10.))
+                .py(px(3.))
+                .rounded_sm()
+                .bg(rgb(bg))
+                .text_color(rgb(fg))
+                .cursor_pointer()
+                .on_click(|_: &ClickEvent, _w, cx| {
+                    config::update(cx, |c| c.telemetry.enabled ^= true);
+                })
+                .child(icons::icon(icon, 12., fg))
+                .child(if active { "On" } else { "Off" }),
+        )
 }

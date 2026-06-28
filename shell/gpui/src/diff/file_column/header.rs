@@ -1,8 +1,12 @@
-use gpui::{IntoElement, ParentElement, SharedString, Styled, div, px, rgb};
+use gpui::{
+    AnyElement, App, ClickEvent, Context, InteractiveElement, IntoElement, ParentElement,
+    SharedString, StatefulInteractiveElement, Styled, Window, div, px, rgb,
+};
 
 use crate::app::config;
 use crate::app::theme::{FONT_META, Theme};
-use crate::ui::icons::glyph;
+use crate::repo::window::RepoWindow;
+use crate::ui::icons::{self, glyph};
 use crate::ui::primitives::toggle_button;
 
 pub(super) fn file_column_header(
@@ -10,7 +14,9 @@ pub(super) fn file_column_header(
     count: usize,
     loading: bool,
     show_review: bool,
+    hide_reviewed: bool,
     tree_mode: bool,
+    cx: &mut Context<RepoWindow>,
     t: &Theme,
 ) -> impl IntoElement {
     let label = if loading {
@@ -27,7 +33,7 @@ pub(super) fn file_column_header(
     } else {
         (glyph::ROWS, "Flat")
     };
-    div()
+    let mut row = div()
         .flex()
         .flex_row()
         .items_center()
@@ -42,13 +48,64 @@ pub(super) fn file_column_header(
                 .text_color(rgb(t.fg_dim))
                 .child(SharedString::from(label)),
         )
-        .child(div().flex_1())
-        .child(toggle_button(
-            tree_glyph,
-            tree_label,
-            "file-tree",
-            tree_mode,
+        .child(div().flex_1());
+
+    if show_review && reviewed > 0 {
+        row = row.child(icon_toggle_button(
+            "file-hide-reviewed",
+            if hide_reviewed {
+                glyph::EYE_OFF
+            } else {
+                glyph::EYE
+            },
+            hide_reviewed,
             t,
-            |_, _, cx| config::update(cx, |c| c.diff.tree_file_list ^= true),
-        ))
+            cx.listener(|view, _event: &ClickEvent, _window, cx| {
+                view.toggle_hide_reviewed_files(cx);
+            }),
+        ));
+    }
+
+    row.child(toggle_button(
+        tree_glyph,
+        tree_label,
+        "file-tree",
+        tree_mode,
+        t,
+        |_, _, cx| config::update(cx, |c| c.diff.tree_file_list ^= true),
+    ))
+}
+
+fn icon_toggle_button<F>(
+    id: &'static str,
+    glyph_str: &'static str,
+    active: bool,
+    t: &Theme,
+    on_click: F,
+) -> AnyElement
+where
+    F: Fn(&ClickEvent, &mut Window, &mut App) + 'static,
+{
+    let (bg, fg) = if active {
+        (t.toggle_active_bg, t.toggle_active_fg)
+    } else {
+        (t.toggle_inactive_bg, t.toggle_inactive_fg)
+    };
+    div()
+        .id(SharedString::from(id))
+        .debug_selector(move || id.to_owned())
+        .flex()
+        .flex_none()
+        .items_center()
+        .justify_center()
+        .w(px(24.))
+        .h(px(22.))
+        .mr(px(6.))
+        .rounded_sm()
+        .bg(rgb(bg))
+        .cursor_pointer()
+        .hover(|s| s.bg(rgb(t.row_alt_bg)))
+        .on_click(on_click)
+        .child(icons::icon(glyph_str, 13., fg))
+        .into_any_element()
 }

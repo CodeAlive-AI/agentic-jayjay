@@ -26,6 +26,7 @@ where
     };
     div()
         .id(SharedString::from(format!("toggle-{id}")))
+        .debug_selector(move || format!("toggle-{id}"))
         .flex()
         .flex_row()
         .items_center()

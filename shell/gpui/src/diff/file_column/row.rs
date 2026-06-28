@@ -16,6 +16,10 @@ pub(super) fn row_bg(is_selected: bool, _ix: usize, t: &Theme) -> u32 {
     }
 }
 
+pub(super) fn file_name_opacity(show_review: bool, reviewed: bool) -> f32 {
+    if show_review && reviewed { 0.5 } else { 1.0 }
+}
+
 pub(super) fn review_checkbox<FRev>(
     id: (&'static str, usize),
     reviewed: bool,
@@ -62,4 +66,16 @@ pub(super) fn status_dot(hunk: &DiffHunk, t: &Theme) -> impl IntoElement {
         .h(px(8.))
         .rounded_full()
         .bg(rgb(file_status::color(hunk, t)))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::file_name_opacity;
+
+    #[test]
+    fn reviewed_style_only_dims_working_copy_file_names() {
+        assert_eq!(file_name_opacity(true, true), 0.5);
+        assert_eq!(file_name_opacity(false, true), 1.0);
+        assert_eq!(file_name_opacity(true, false), 1.0);
+    }
 }

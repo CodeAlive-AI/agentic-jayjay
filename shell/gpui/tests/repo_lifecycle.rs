@@ -2,8 +2,9 @@ mod support;
 
 use std::fs;
 
-use gpui::{AppContext, Focusable, KeyBinding, TestAppContext, VisualTestContext};
+use gpui::{AppContext, Focusable, KeyBinding, Modifiers, TestAppContext, VisualTestContext};
 use jayjay_gpui::app::actions::{CloseWindow, Dismiss};
+use jayjay_gpui::app::config;
 use jayjay_gpui::repo::RepoWindow;
 use jayjay_gpui::repo::view_model::RepoViewModel;
 use jj_test::LinearFixture;
@@ -65,6 +66,43 @@ fn invalid_repo_can_be_initialized(cx: &mut TestAppContext) {
         );
     });
     assert!(repo_path.join(".jj").exists());
+}
+
+#[gpui::test]
+fn startup_onboarding_delays_repo_open_until_finished(cx: &mut TestAppContext) {
+    let fixture = LinearFixture::build();
+
+    install_test_globals(cx);
+    let (view, cx) = cx.add_window_view(|_, cx| RepoWindow::new_with_onboarding(fixture.path, cx));
+    let cx: &mut VisualTestContext = cx;
+    settle_visual(cx);
+
+    assert!(cx.debug_bounds("onboarding-next").is_some());
+    view.read_with(cx, |view, cx| {
+        let vm = view.view_model().read(cx);
+        assert!(vm.repo.is_none(), "onboarding should delay repo open");
+        assert!(vm.error.is_none());
+    });
+
+    let next = cx.debug_bounds("onboarding-next").expect("Next button");
+    cx.simulate_click(next.center(), Modifiers::default());
+    settle_visual(cx);
+    let next = cx.debug_bounds("onboarding-next").expect("Next button");
+    cx.simulate_click(next.center(), Modifiers::default());
+    settle_visual(cx);
+    let finish = cx
+        .debug_bounds("onboarding-finish")
+        .expect("Get Started button");
+    cx.simulate_click(finish.center(), Modifiers::default());
+    settle_visual(cx);
+
+    view.read_with(cx, |view, cx| {
+        let vm = view.view_model().read(cx);
+        assert!(vm.repo.is_some(), "repo should open after onboarding");
+        assert!(vm.error.is_none(), "open errored: {:?}", vm.error);
+    });
+    let completed = cx.cx.update(|cx| config::current(cx).onboarding.completed);
+    assert!(completed);
 }
 
 #[gpui::test]
@@ -140,6 +178,43 @@ fn manual_refresh_snapshots_working_copy(cx: &mut TestAppContext) {
             "manual refresh should snapshot working copy edits"
         );
     });
+}
+
+#[gpui::test]
+fn refresh_updates_status_bar_snapshot(cx: &mut TestAppContext) {
+    let fixture = LinearFixture::build();
+    add_tracked_working_copy_edits(&fixture);
+    let vm = cx.new(|_| RepoViewModel::new(fixture.path.clone()));
+
+    vm.update(cx, |vm, cx| vm.refresh(false, cx));
+    settle(cx);
+
+    vm.read_with(cx, |vm, _| {
+        let stats = vm
+            .working_copy_stats
+            .as_ref()
+            .expect("working-copy stats should load during refresh");
+        assert!(stats.files_changed > 0, "working copy should be dirty");
+        assert!(
+            !vm.current_operation_description.trim().is_empty(),
+            "status bar should have the current operation description"
+        );
+    });
+}
+
+#[gpui::test]
+fn status_bar_renders_swiftui_style_items(cx: &mut TestAppContext) {
+    let fixture = LinearFixture::build();
+    add_tracked_working_copy_edits(&fixture);
+    install_test_globals(cx);
+    let (_view, cx) = cx.add_window_view(|_, cx| RepoWindow::new(fixture.path.clone(), cx));
+    let cx: &mut VisualTestContext = cx;
+    settle_visual(cx);
+
+    assert!(cx.debug_bounds("status-path").is_some());
+    assert!(cx.debug_bounds("status-wc-stat").is_some());
+    assert!(cx.debug_bounds("status-last-op").is_some());
+    assert!(cx.debug_bounds("status-changes").is_some());
 }
 
 #[gpui::test]

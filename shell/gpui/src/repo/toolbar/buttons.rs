@@ -6,95 +6,29 @@ use gpui::{
     Transformation, Window, div, percentage, px, rgb, svg,
 };
 
-use crate::app::theme::{Theme, theme};
+use crate::app::theme::Theme;
 use crate::repo::window::RepoWindow;
 use crate::ui::icons::{self, glyph};
 use crate::ui::primitives::{icon_label, toolbar_button, toolbar_icon_button};
 use crate::windows::settings::SettingsView;
 
-const TOOLBAR_HEIGHT: f32 = 44.;
-const TRAFFIC_LIGHT_INSET: f32 = 78.;
-
-pub fn toolbar(
-    repo_path: SharedString,
-    bookmark_count: usize,
-    has_wc_changes: bool,
-    is_refreshing: bool,
-    cx: &mut Context<RepoWindow>,
-) -> AnyElement {
-    let t = theme(cx).clone();
-
-    let repo_name = repo_path
-        .rsplit('/')
-        .next()
-        .filter(|s| !s.is_empty())
-        .unwrap_or(repo_path.as_ref())
-        .to_owned();
-
-    div()
-        .id(SharedString::from("toolbar"))
-        .flex()
-        .flex_row()
-        .items_center()
-        .w_full()
-        .h(px(TOOLBAR_HEIGHT))
-        .pl(px(TRAFFIC_LIGHT_INSET))
-        .pr(px(12.))
-        .gap(px(6.))
-        .bg(rgb(t.header_bg))
-        .border_b_1()
-        .border_color(rgb(t.border))
-        .on_mouse_down(
-            MouseButton::Left,
-            cx.listener(|_, ev: &MouseDownEvent, window, _cx| {
-                if ev.click_count == 2 {
-                    window.zoom_window();
-                }
-            }),
-        )
-        .child(bookmarks_button(bookmark_count, &t, cx))
-        .child(coming_soon_icon_button(
-            glyph::FILTER,
-            "tb-filter",
-            "Filter",
-            &t,
-            cx,
-        ))
-        .child(divider(&t))
-        .child(refresh_button(has_wc_changes, is_refreshing, &t, cx))
-        .child(coming_soon_icon_button(
-            glyph::ARROW_DOWN,
-            "tb-pull",
-            "Pull",
-            &t,
-            cx,
-        ))
-        .child(coming_soon_icon_button(
-            glyph::ARROW_UP,
-            "tb-push",
-            "Push",
-            &t,
-            cx,
-        ))
-        .child(div().flex_1())
-        .child(
-            div()
-                .text_size(px(13.))
-                .text_color(rgb(t.fg))
-                .child(SharedString::from(repo_name)),
-        )
-        .child(div().flex_1())
-        .child(
-            toolbar_icon_button("tb-settings", glyph::GEAR, &t).on_click(
-                |_ev: &ClickEvent, _w: &mut Window, cx: &mut gpui::App| {
-                    SettingsView::open(cx);
-                },
-            ),
-        )
-        .into_any_element()
+#[derive(Clone, Copy)]
+pub(super) enum RepoToolAction {
+    Editor,
+    Terminal,
 }
 
-fn bookmarks_button(count: usize, t: &Theme, cx: &mut Context<RepoWindow>) -> AnyElement {
+#[derive(Clone, Copy)]
+pub(super) enum SyncAction {
+    FetchOrigin,
+    PushDefault,
+}
+
+pub(super) fn bookmarks_button(
+    count: usize,
+    t: &Theme,
+    cx: &mut Context<RepoWindow>,
+) -> AnyElement {
     let label = if count == 0 {
         SharedString::from("Bookmarks")
     } else {
@@ -125,7 +59,7 @@ fn bookmarks_button(count: usize, t: &Theme, cx: &mut Context<RepoWindow>) -> An
         .into_any_element()
 }
 
-fn coming_soon_icon_button(
+pub(super) fn coming_soon_icon_button(
     glyph_str: &'static str,
     id: &'static str,
     label: &'static str,
@@ -139,7 +73,7 @@ fn coming_soon_icon_button(
         .into_any_element()
 }
 
-fn refresh_button(
+pub(super) fn refresh_button(
     badge: bool,
     is_refreshing: bool,
     t: &Theme,
@@ -174,6 +108,65 @@ fn refresh_button(
         .into_any_element()
 }
 
+pub(super) fn sync_button(
+    glyph_str: &'static str,
+    id: &'static str,
+    label: &'static str,
+    action: SyncAction,
+    t: &Theme,
+    cx: &mut Context<RepoWindow>,
+) -> AnyElement {
+    toolbar_icon_button(id, glyph_str, t)
+        .on_click(
+            cx.listener(move |view, _ev: &ClickEvent, _w, cx| match action {
+                SyncAction::FetchOrigin => view.git_fetch_origin(cx),
+                SyncAction::PushDefault => view.git_push_default(cx),
+            }),
+        )
+        .debug_selector(move || format!("toolbar-{label}"))
+        .into_any_element()
+}
+
+pub(super) fn repo_tool_button(
+    id: &'static str,
+    glyph_str: &'static str,
+    repo_path: SharedString,
+    action: RepoToolAction,
+    failure_message: &'static str,
+    t: &Theme,
+    cx: &mut Context<RepoWindow>,
+) -> AnyElement {
+    toolbar_icon_button(id, glyph_str, t)
+        .on_click(cx.listener(move |view, _ev: &ClickEvent, _w, cx| {
+            let ok = match action {
+                RepoToolAction::Editor => {
+                    crate::app::tools::open_in_editor(repo_path.as_ref(), ".", cx)
+                }
+                RepoToolAction::Terminal => {
+                    crate::app::tools::open_in_terminal(repo_path.as_ref(), cx)
+                }
+            };
+            if !ok {
+                view.show_toast(failure_message, cx);
+            }
+        }))
+        .into_any_element()
+}
+
+pub(super) fn settings_button(t: &Theme) -> AnyElement {
+    toolbar_icon_button("tb-settings", glyph::GEAR, t)
+        .on_click(|_ev: &ClickEvent, _w: &mut Window, cx: &mut gpui::App| SettingsView::open(cx))
+        .into_any_element()
+}
+
+pub(super) fn divider(t: &Theme) -> AnyElement {
+    div()
+        .w(px(1.))
+        .h(px(20.))
+        .bg(rgb(t.border))
+        .into_any_element()
+}
+
 fn refresh_icon(is_refreshing: bool, t: &Theme) -> AnyElement {
     let icon = svg()
         .path(icons::REFRESH_CW_SVG)
@@ -190,12 +183,4 @@ fn refresh_icon(is_refreshing: bool, t: &Theme) -> AnyElement {
     } else {
         icon.into_any_element()
     }
-}
-
-fn divider(t: &Theme) -> AnyElement {
-    div()
-        .w(px(1.))
-        .h(px(20.))
-        .bg(rgb(t.border))
-        .into_any_element()
 }

@@ -55,6 +55,8 @@ pub struct FileColumnState<'a> {
     pub reviewed_count: usize,
     /// Review checkboxes only render for the working copy.
     pub show_review: bool,
+    pub hide_reviewed: bool,
+    pub visible_indices: Option<Arc<Vec<usize>>>,
     /// Container width in px — used to size middle-truncation char budgets.
     pub column_width: f32,
     /// Per-window cache so tree mode reuses the built tree across render frames.
@@ -71,6 +73,8 @@ pub fn file_column(state: FileColumnState<'_>, cx: &mut Context<RepoWindow>) -> 
         change_id,
         reviewed_count,
         show_review,
+        hide_reviewed,
+        visible_indices,
         column_width,
         tree_cache,
     } = state;
@@ -96,7 +100,9 @@ pub fn file_column(state: FileColumnState<'_>, cx: &mut Context<RepoWindow>) -> 
                     0,
                     loading,
                     show_review,
+                    hide_reviewed,
                     tree_mode,
+                    cx,
                     &t,
                 ))
                 .child(
@@ -113,11 +119,30 @@ pub fn file_column(state: FileColumnState<'_>, cx: &mut Context<RepoWindow>) -> 
     };
 
     let count = hunks.len();
+    let visible_indices = visible_indices.unwrap_or_else(|| Arc::new((0..count).collect()));
+    let visible_hunks = if visible_indices.len() == count
+        && visible_indices
+            .iter()
+            .enumerate()
+            .all(|(visible_ix, hunk_ix)| visible_ix == *hunk_ix)
+    {
+        hunks.clone()
+    } else {
+        Arc::new(
+            visible_indices
+                .iter()
+                .filter_map(|ix| hunks.get(*ix).cloned())
+                .collect::<Vec<_>>(),
+        )
+    };
 
     let body = if tree_mode {
-        let tree = tree_cache.borrow_mut().visible(&hunks, collapsed_dirs);
+        let tree = tree_cache
+            .borrow_mut()
+            .visible(&visible_hunks, collapsed_dirs);
         tree_body(
             hunks.clone(),
+            visible_indices.clone(),
             tree,
             selected_ix,
             collapsed_dirs.clone(),
@@ -131,6 +156,7 @@ pub fn file_column(state: FileColumnState<'_>, cx: &mut Context<RepoWindow>) -> 
     } else {
         flat_body(
             hunks.clone(),
+            visible_indices.clone(),
             selected_ix,
             t.clone(),
             scroll,
@@ -151,7 +177,9 @@ pub fn file_column(state: FileColumnState<'_>, cx: &mut Context<RepoWindow>) -> 
             count,
             loading,
             show_review,
+            hide_reviewed,
             tree_mode,
+            cx,
             &t,
         ))
         .child(body)

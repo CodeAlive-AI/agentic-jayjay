@@ -1,3 +1,5 @@
+use std::process::Command;
+
 use jayjay_core::{CliStatus, check_gh_environment, check_glab_environment, check_jj_environment};
 
 use crate::app::config::AppConfig;
@@ -8,8 +10,9 @@ use gpui::{
 };
 
 use super::SettingsView;
-use super::shared::{current_value, field_row, section_title};
+use super::shared::{current_value, field_row, row_container, section_title, subsection_title};
 use crate::app::theme::Theme;
+use crate::platform::{CUSTOM_TERMINAL_HINT, CUSTOM_TERMINAL_LABEL};
 use crate::ui::icons::{self, glyph};
 
 pub(super) fn tools_section(
@@ -17,9 +20,10 @@ pub(super) fn tools_section(
     t: &Theme,
     cx: &mut Context<SettingsView>,
 ) -> AnyElement {
-    div()
+    let mut section = div()
         .flex()
         .flex_col()
+        .w_full()
         .gap(px(16.))
         .child(section_title("Tools", t))
         .child(field_row(
@@ -27,48 +31,119 @@ pub(super) fn tools_section(
             dropdown_button("editor", EDITOR_OPTIONS, &cfg.tools.external_editor, t, cx),
             "Used by 'Open in Editor' actions.",
             t,
-        ))
-        .child(field_row(
-            "Custom editor command",
-            current_value(
-                if cfg.tools.custom_editor_command.is_empty() {
-                    "(none)"
-                } else {
-                    cfg.tools.custom_editor_command.as_str()
-                },
-                t,
-            ),
-            "Required when editor = 'Custom'. Edit ~/.config/jayjay/config.toml.",
+        ));
+    if cfg.tools.external_editor == "custom" {
+        section = section.child(field_row(
+            "Command",
+            current_value(setting_value(&cfg.tools.custom_editor_command), t),
+            "e.g. code, nvim",
             t,
-        ))
-        .child(field_row(
-            "Terminal",
-            dropdown_button("terminal", TERMINAL_OPTIONS, &cfg.tools.terminal, t, cx),
-            "Used by 'Open in Terminal'.",
+        ));
+    }
+    section = section.child(field_row(
+        "Terminal",
+        dropdown_button("terminal", TERMINAL_OPTIONS, &cfg.tools.terminal, t, cx),
+        "Used by 'Open in Terminal'.",
+        t,
+    ));
+    if cfg.tools.terminal == "custom" {
+        section = section.child(field_row(
+            CUSTOM_TERMINAL_LABEL,
+            current_value(setting_value(&cfg.tools.custom_terminal_command), t),
+            CUSTOM_TERMINAL_HINT,
             t,
-        ))
+        ));
+    }
+    section
+        .child(ai_tools(t))
         .child(cli_tools(t))
         .into_any_element()
 }
 
-/// CLI tool availability, mirroring the SwiftUI Tools status rows.
+fn setting_value(value: &str) -> &str {
+    if value.is_empty() { "(none)" } else { value }
+}
+
+fn ai_tools(t: &Theme) -> impl IntoElement {
+    div()
+        .flex()
+        .flex_col()
+        .w_full()
+        .gap(px(2.))
+        .child(subsection_title("AI Commit Message", t))
+        .child(binary_row(
+            "Codex CLI",
+            glyph::FILE_CODE,
+            "codex",
+            "Installed",
+            "Not found",
+            t,
+        ))
+        .child(binary_row(
+            "Claude CLI",
+            glyph::SPARKLE,
+            "claude",
+            "Installed",
+            "Not found",
+            t,
+        ))
+}
+
 fn cli_tools(t: &Theme) -> impl IntoElement {
     div()
         .flex()
         .flex_col()
         .w_full()
-        .max_w(px(360.))
         .gap(px(2.))
-        .child(
-            div()
-                .pb(px(4.))
-                .text_size(px(11.))
-                .text_color(rgb(t.fg_faint))
-                .child("Command-line tools"),
-        )
+        .child(subsection_title("CLI", t))
+        .child(binary_row(
+            "jayjay",
+            glyph::INFO,
+            "jayjay",
+            "Installed",
+            "Not installed",
+            t,
+        ))
         .child(cli_row("jj", glyph::GIT_BRANCH, check_jj_environment(), t))
         .child(cli_row("gh", glyph::GIT_MERGE, check_gh_environment(), t))
-        .child(cli_row("glab", glyph::GIT_MERGE, check_glab_environment(), t))
+        .child(cli_row(
+            "glab",
+            glyph::GIT_MERGE,
+            check_glab_environment(),
+            t,
+        ))
+}
+
+fn binary_row(
+    name: &'static str,
+    glyph_str: &'static str,
+    command: &'static str,
+    installed_label: &'static str,
+    missing_label: &'static str,
+    t: &Theme,
+) -> impl IntoElement {
+    status_row(
+        name,
+        glyph_str,
+        if command_exists(command) {
+            installed_label
+        } else {
+            missing_label
+        },
+        command_exists(command),
+        t,
+    )
+}
+
+fn command_exists(command: &str) -> bool {
+    Command::new(command)
+        .arg("--version")
+        .output()
+        .is_ok_and(|output| output.status.success())
+        || Command::new(command)
+            .arg("version")
+            .output()
+            .is_ok_and(|output| output.status.success())
 }
 
 fn cli_row(
@@ -77,51 +152,62 @@ fn cli_row(
     status: CliStatus,
     t: &Theme,
 ) -> impl IntoElement {
-    let mut row = div()
-        .flex()
-        .flex_row()
-        .items_center()
-        .gap(px(8.))
+    let detail = if status.is_installed {
+        if status.path.is_empty() {
+            format!("{name} {}", status.version)
+        } else {
+            status.path
+        }
+    } else {
+        "Not installed".to_owned()
+    };
+    status_row(name, glyph_str, detail, status.is_installed, t)
+}
+
+fn status_row(
+    name: &'static str,
+    glyph_str: &'static str,
+    detail: impl Into<SharedString>,
+    installed: bool,
+    t: &Theme,
+) -> impl IntoElement {
+    row_container(t)
+        .debug_selector(move || format!("settings-tool-row-{name}"))
         .py(px(5.))
-        .px(px(8.))
-        .rounded_sm()
         .child(icons::icon(glyph_str, 14., t.fg_dim))
         .child(
             div()
-                .w(px(48.))
+                .flex_1()
+                .min_w_0()
+                .truncate()
                 .text_size(px(12.))
                 .text_color(rgb(t.fg))
                 .child(name),
         )
-        .child(div().flex_1());
-
-    if status.is_installed {
-        let detail = if status.version.is_empty() {
-            status.path.clone()
-        } else {
-            format!("{name} {}", status.version)
-        };
-        row = row
-            .child(
-                div()
-                    .font_family(crate::app::fonts::mono())
-                    .text_size(px(11.))
-                    .text_color(rgb(t.fg_dim))
-                    .child(SharedString::from(detail)),
-            )
-            .child(icons::icon(glyph::CHECK, 13., t.tag_added_fg));
-    } else {
-        row = row
-            .child(
-                div()
-                    .text_size(px(11.))
-                    .text_color(rgb(t.fg_faint))
-                    .child("Not installed"),
-            )
-            .child(icons::icon(glyph::X_CIRCLE, 13., t.fg_faint));
-    }
-
-    row
+        .child(
+            div()
+                .flex_none()
+                .max_w(px(360.))
+                .min_w_0()
+                .truncate()
+                .font_family(crate::app::fonts::mono())
+                .text_size(px(11.))
+                .text_color(rgb(if installed { t.fg_dim } else { t.fg_faint }))
+                .child(detail.into()),
+        )
+        .child(icons::icon(
+            if installed {
+                glyph::CHECK
+            } else {
+                glyph::X_CIRCLE
+            },
+            13.,
+            if installed {
+                t.tag_added_fg
+            } else {
+                t.fg_faint
+            },
+        ))
 }
 
 fn dropdown_button(

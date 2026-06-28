@@ -24,6 +24,8 @@ pub mod glyph {
     pub const COLUMNS: &str = "\u{e098}";
     pub const COPY: &str = "\u{e09e}";
     pub const DOT: &str = "\u{e44f}";
+    pub const EYE: &str = "\u{e0ba}";
+    pub const EYE_OFF: &str = "\u{e0bb}";
     pub const FILE_CODE: &str = "\u{e0c3}";
     pub const FILTER: &str = "\u{e0dc}";
     pub const FOLDER: &str = "\u{e0d7}";
@@ -45,6 +47,7 @@ pub mod glyph {
     pub const SIDEBAR: &str = "\u{e12a}";
     pub const SPARKLE: &str = "\u{e47e}";
     pub const TAG: &str = "\u{e17f}";
+    pub const TERMINAL: &str = "\u{e181}";
     pub const WHITESPACE: &str = "\u{e3a3}";
     pub const WARNING: &str = "\u{e193}";
     pub const X: &str = "\u{e1b2}";

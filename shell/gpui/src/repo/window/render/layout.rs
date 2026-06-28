@@ -50,6 +50,10 @@ pub(super) fn file_column_wrapper(
             .count(),
         _ => 0,
     };
+    let visible_indices = files.as_ref().map(|fs| {
+        std::sync::Arc::new(view.visible_file_indices(fs, change_id.as_deref(), show_review))
+    });
+    let hide_reviewed = show_review && view.file_column.hide_reviewed;
     div()
         .w(px(width))
         .h_full()
@@ -63,6 +67,8 @@ pub(super) fn file_column_wrapper(
                 change_id,
                 reviewed_count,
                 show_review,
+                hide_reviewed,
+                visible_indices,
                 column_width: width,
                 tree_cache,
             },
