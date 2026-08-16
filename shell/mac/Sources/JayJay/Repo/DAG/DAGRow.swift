@@ -14,6 +14,7 @@ struct DAGRow: View {
     var onBookmarkDragEnded: ((String, DragGesture.Value) -> Void)?
     var workspaceNames: [String] = []
     var isDisplayedWorkingCopy: Bool = false
+    var diffStats: DiffStats? = nil
 
     /// Non-private: read by the DAGRow+GraphColumn / +Refs extensions.
     var change: ChangeInfo {
@@ -51,6 +52,19 @@ struct DAGRow: View {
                     CommitAvatar(email: change.author.email, size: 14)
                     Text(change.author.name)
                     Text(relativeDate(change.author.timestampMillis)).foregroundStyle(.secondary)
+                    Spacer(minLength: 6)
+                    if let diffStats, diffStats.insertions > 0 || diffStats.deletions > 0 {
+                        DiffLineCounts(insertions: diffStats.insertions, deletions: diffStats.deletions)
+                            .layoutPriority(1)
+                            .accessibilityElement(children: .ignore)
+                            .accessibilityIdentifier(
+                                AID.DAG.diffStats(
+                                    changeIdPrefix: String(change.selectionRevision.prefix(12)),
+                                    insertions: diffStats.insertions,
+                                    deletions: diffStats.deletions
+                                )
+                            )
+                    }
                 }
                 .jayjayFont(10).lineLimit(1).truncationMode(.tail).foregroundStyle(.secondary)
             }

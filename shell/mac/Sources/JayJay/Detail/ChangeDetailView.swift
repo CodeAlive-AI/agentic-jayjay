@@ -14,6 +14,8 @@ struct ChangeDetailView: View {
     var onClearCompare: (() -> Void)?
     var onReverseCompare: (() -> Void)?
     var onRevealChangeInDag: ((String) -> Void)?
+    var cachedDiffStats: DiffStats?
+    var onRequestDiffStats: ((ChangeInfo) -> Void)?
     @Binding var activePane: ActivePane
 
     var isCompareMode: Bool {
@@ -126,6 +128,9 @@ struct ChangeDetailView: View {
             }
         }
         .onAppear { resetState() }
+        .onChange(of: cachedDiffStats) { _, stats in
+            applyCachedDiffStats(stats)
+        }
         // Diff edit must own j/k: the DAG's earlier-installed key monitor would otherwise consume them whenever the DAG was the active pane.
         .onChange(of: paneMode.isDiffEdit) { _, isDiffEdit in
             if isDiffEdit {

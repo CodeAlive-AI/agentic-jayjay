@@ -7,7 +7,7 @@ mod refresh_indicator;
 mod selection;
 mod tasks;
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -104,6 +104,9 @@ pub struct RepoViewModel {
     diff_load_failures: HashSet<String>,
     pub change_stats: Option<DiffStats>,
     pub working_copy_stats: Option<DiffStats>,
+    pub graph_diff_stats: HashMap<String, DiffStats>,
+    graph_diff_stats_queue: VecDeque<(String, String)>,
+    graph_diff_stats_in_flight: Option<String>,
     pub current_operation_description: String,
     pub view_mode: DiffViewMode,
     pub(crate) ignore_whitespace: bool,
@@ -257,6 +260,9 @@ impl RepoViewModel {
             diff_load_failures: HashSet::new(),
             change_stats: None,
             working_copy_stats: None,
+            graph_diff_stats: HashMap::new(),
+            graph_diff_stats_queue: VecDeque::new(),
+            graph_diff_stats_in_flight: None,
             current_operation_description: String::new(),
             view_mode: DiffViewMode::Unified,
             ignore_whitespace: false,
@@ -305,6 +311,9 @@ impl RepoViewModel {
             diff_load_failures: HashSet::new(),
             change_stats: None,
             working_copy_stats: None,
+            graph_diff_stats: HashMap::new(),
+            graph_diff_stats_queue: VecDeque::new(),
+            graph_diff_stats_in_flight: None,
             current_operation_description: String::new(),
             view_mode: DiffViewMode::Unified,
             ignore_whitespace: false,

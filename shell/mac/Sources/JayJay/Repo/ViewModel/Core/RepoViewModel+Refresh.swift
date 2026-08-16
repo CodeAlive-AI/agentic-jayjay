@@ -141,6 +141,7 @@ extension RepoViewModel {
     ) {
         guard !abandonStaleRefresh(generation: generation) else { return }
         graphEntries = content.graph
+        retainGraphDiffStats()
         bookmarks = content.bookmarks
         workspaces = WorkspaceSidebarPolicy.mergingAdopted(content.workspaces, current: workspaces)
         trunkBookmarkName = content.trunkBookmarkName
@@ -158,6 +159,7 @@ extension RepoViewModel {
             )
         }
         apply(content.statusBar)
+        seedWorkingCopyGraphDiffStats()
         isLoading = false
         if isRefreshComplete {
             isRefreshingInFlight = false
@@ -206,6 +208,7 @@ extension RepoViewModel {
                     guard let self else { return }
                     guard !self.abandonStaleRefresh(generation: generation) else { return }
                     self.graphEntries = content.graph
+                    self.retainGraphDiffStats()
                     self.bookmarks = content.bookmarks
                     self.workspaces = WorkspaceSidebarPolicy.mergingAdopted(
                         content.workspaces,
@@ -220,6 +223,7 @@ extension RepoViewModel {
                         description: content.workingCopyDescription
                     )
                     self.apply(content.statusBar)
+                    self.seedWorkingCopyGraphDiffStats()
                     self.isLoading = false
                     self.isRefreshingInFlight = false
                     self.hasWorkingCopyChanges = false

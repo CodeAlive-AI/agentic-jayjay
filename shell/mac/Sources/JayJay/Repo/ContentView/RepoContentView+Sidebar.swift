@@ -60,7 +60,9 @@ extension RepoContentView {
                 workspaces: viewModel.workspaces,
                 displayedWorkingCopyCommitId: WorkspaceSidebarPolicy
                     .boundWorkspace(in: viewModel.workspaces, repoPath: viewModel.repoPath)?
-                    .wcCommitId
+                    .wcCommitId,
+                diffStatsByCommitId: viewModel.graphDiffStats,
+                onRequestDiffStats: { viewModel.requestGraphDiffStats(for: $0) }
             )
             if shouldShowCommitBox {
                 Divider()

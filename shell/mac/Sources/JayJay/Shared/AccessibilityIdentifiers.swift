@@ -13,6 +13,11 @@ enum AID {
         static func row(_ changeIdPrefix: String) -> String {
             "dag.row.\(changeIdPrefix)"
         }
+
+        /// Separate from `row` so `BEGINSWITH 'dag.row.'` queries stay one element per change.
+        static func diffStats(changeIdPrefix: String, insertions: UInt32, deletions: UInt32) -> String {
+            "dag.diffStats.\(changeIdPrefix).\(insertions).\(deletions)"
+        }
     }
 
     enum FileList {

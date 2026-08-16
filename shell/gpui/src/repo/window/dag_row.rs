@@ -6,7 +6,7 @@ use gpui::{
     MouseDownEvent, ParentElement, SharedString, StatefulInteractiveElement, Styled, Window, div,
     px, rgb,
 };
-use jayjay_core::{ChangeInfo, CommitAuthor};
+use jayjay_core::{ChangeInfo, CommitAuthor, DiffStats};
 
 use crate::app::theme::{FONT_BODY, FONT_ID, FONT_META, FONT_TAG, Theme};
 use crate::ui::icons::glyph;
@@ -29,6 +29,7 @@ pub(super) struct DagRow<'a> {
     pub ix: usize,
     pub theme: &'a Theme,
     pub dag_col: Option<AnyElement>,
+    pub diff_stats: Option<&'a DiffStats>,
 }
 
 pub(super) fn dag_row<F, FR>(
@@ -49,6 +50,7 @@ where
         ix,
         theme: t,
         dag_col,
+        diff_stats,
     } = row;
     let short_id: SharedString = change.change_id.chars().take(12).collect::<String>().into();
     let summary = first_line(&change.description);
@@ -102,7 +104,7 @@ where
                 .min_w_0()
                 .child(tags_row(change, short_id, ix, t, on_bookmark_right_click))
                 .child(summary_line(&summary, t))
-                .child(meta_row(&change.author, t)),
+                .child(meta_row(&change.author, diff_stats, t)),
         )
         .into_any_element()
 }
@@ -266,8 +268,8 @@ fn summary_line(summary: &str, t: &Theme) -> impl IntoElement {
     }
 }
 
-fn meta_row(author: &CommitAuthor, t: &Theme) -> impl IntoElement {
-    div()
+fn meta_row(author: &CommitAuthor, stats: Option<&DiffStats>, t: &Theme) -> impl IntoElement {
+    let mut row = div()
         .flex()
         .flex_row()
         .items_center()
@@ -275,12 +277,52 @@ fn meta_row(author: &CommitAuthor, t: &Theme) -> impl IntoElement {
         .text_size(px(FONT_META))
         .text_color(rgb(t.fg_dim))
         .child(crate::ui::avatar::element(&author.email, &author.name, 14.))
-        .child(SharedString::from(author.name.clone()))
+        .child(
+            div()
+                .min_w_0()
+                .flex_1()
+                .truncate()
+                .child(SharedString::from(author.name.clone())),
+        )
         .child(
             div()
                 .text_color(rgb(t.fg_faint))
                 .child(SharedString::from(format_relative(author.timestamp_millis))),
-        )
+        );
+    if let Some(counts) = loc_counts(stats, t) {
+        row = row.child(counts);
+    }
+    row
+}
+
+fn loc_counts(stats: Option<&DiffStats>, t: &Theme) -> Option<AnyElement> {
+    let stats = stats?;
+    if stats.insertions == 0 && stats.deletions == 0 {
+        return None;
+    }
+    let mut counts = div()
+        .flex()
+        .flex_row()
+        .items_baseline()
+        .gap(px(4.))
+        .font_family(crate::app::fonts::mono())
+        .font_weight(gpui::FontWeight::SEMIBOLD)
+        .flex_shrink_0();
+    if stats.insertions > 0 {
+        counts = counts.child(
+            div()
+                .text_color(rgb(t.diff_gutter_added_fg))
+                .child(SharedString::from(format!("+{}", stats.insertions))),
+        );
+    }
+    if stats.deletions > 0 {
+        counts = counts.child(
+            div()
+                .text_color(rgb(t.diff_gutter_removed_fg))
+                .child(SharedString::from(format!("-{}", stats.deletions))),
+        );
+    }
+    Some(counts.into_any_element())
 }
 
 pub(super) fn format_when(ts_millis: i64) -> String {

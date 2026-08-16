@@ -149,6 +149,10 @@ struct RepoContentView: View {
                                 onClearCompare: { viewModel.clearCompare() },
                                 onReverseCompare: { viewModel.reverseCompare() },
                                 onRevealChangeInDag: revealChangeInDAG,
+                                cachedDiffStats: viewModel.selectedChange.flatMap {
+                                    viewModel.graphDiffStats[$0.info.commitId.id]
+                                },
+                                onRequestDiffStats: { viewModel.requestGraphDiffStats(for: $0) },
                                 activePane: $activePane,
                                 evologEntries: viewModel.evologEntries,
                                 evologRev: viewModel.evologRev,

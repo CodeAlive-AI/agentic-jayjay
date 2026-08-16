@@ -24,6 +24,8 @@ struct DAGView: View {
     var workspaces: [WorkspaceInfo] = []
     /// `@` chip follows the opened path, not the last clicked sidebar row.
     var displayedWorkingCopyCommitId: String? = nil
+    var diffStatsByCommitId: [String: DiffStats] = [:]
+    var onRequestDiffStats: ((ChangeInfo) -> Void)? = nil
 
     @State private var contextTargetId: String?
     @State private var dagLayout: DAGLayout
@@ -59,7 +61,9 @@ struct DAGView: View {
         onCreateStackedPRs: ((String) -> Void)? = nil,
         onLoadMore: (() -> Void)? = nil,
         workspaces: [WorkspaceInfo] = [],
-        displayedWorkingCopyCommitId: String? = nil
+        displayedWorkingCopyCommitId: String? = nil,
+        diffStatsByCommitId: [String: DiffStats] = [:],
+        onRequestDiffStats: ((ChangeInfo) -> Void)? = nil
     ) {
         self.entries = entries
         self.selectedId = selectedId
@@ -81,6 +85,8 @@ struct DAGView: View {
         self.onLoadMore = onLoadMore
         self.workspaces = workspaces
         self.displayedWorkingCopyCommitId = displayedWorkingCopyCommitId
+        self.diffStatsByCommitId = diffStatsByCommitId
+        self.onRequestDiffStats = onRequestDiffStats
         _dagLayout = State(initialValue: DAGLayout(entries: entries))
         _dagLayoutEntries = State(initialValue: entries)
     }
@@ -133,11 +139,13 @@ struct DAGView: View {
                                         handleBookmarkDragEnded(name: name, value: value)
                                     },
                                     workspaceNames: workspaceNames(on: entry.change),
-                                    isDisplayedWorkingCopy: isDisplayedWorkingCopy(entry.change)
+                                    isDisplayedWorkingCopy: isDisplayedWorkingCopy(entry.change),
+                                    diffStats: diffStatsByCommitId[entry.change.commitId.id]
                                 )
                                 .background(rebaseFrameReader(for: entry.change.commitId.id))
                                 .id(rowId)
-                                .accessibilityElement(children: .combine)
+                                .onAppear { onRequestDiffStats?(entry.change) }
+                                .accessibilityElement(children: .contain)
                                 .accessibilityIdentifier(AID.DAG.row(String(rowId.prefix(12))))
                                 .contentShape(Rectangle())
                                 .onHover { hovering in

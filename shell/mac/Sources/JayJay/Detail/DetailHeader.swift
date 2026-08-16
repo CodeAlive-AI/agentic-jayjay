@@ -42,16 +42,7 @@ extension ChangeDetailView {
             if let stats = diffStats, stats.insertions > 0 || stats.deletions > 0 {
                 HStack(spacing: 4) {
                     Text("Changes").jayjayFont(11).foregroundStyle(.secondary).frame(width: 70, alignment: .trailing)
-                    if stats.insertions > 0 {
-                        Text("+\(stats.insertions)")
-                            .jayjayFont(11, weight: .semibold, design: .monospaced)
-                            .foregroundStyle(.green)
-                    }
-                    if stats.deletions > 0 {
-                        Text("-\(stats.deletions)")
-                            .jayjayFont(11, weight: .semibold, design: .monospaced)
-                            .foregroundStyle(.red)
-                    }
+                    DiffLineCounts(insertions: stats.insertions, deletions: stats.deletions, size: 11)
                 }
                 .accessibilityElement(children: .ignore)
                 .accessibilityIdentifier(AID.Detail.diffStats(insertions: stats.insertions, deletions: stats.deletions))

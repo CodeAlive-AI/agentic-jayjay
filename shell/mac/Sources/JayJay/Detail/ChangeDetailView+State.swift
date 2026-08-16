@@ -72,13 +72,27 @@ extension ChangeDetailView {
         fileSelectionAnchorPath = fallbackPath
     }
 
+    func applyCachedDiffStats(_ stats: DiffStats?) {
+        guard let stats else { return }
+        diffStats = stats
+        diffStatsCommitId = detail.info.commitId.id
+    }
+
     func loadDiffStats() {
         let rev = detailRevision
         // Key on commitId, not the (stable) changeId, so amends to a mutable change reload.
         let commitId = detail.info.commitId.id
+        if let cachedDiffStats {
+            applyCachedDiffStats(cachedDiffStats)
+            return
+        }
         guard diffStatsCommitId != commitId else { return }
         diffStatsCommitId = commitId
         diffStats = nil
+        if let onRequestDiffStats {
+            onRequestDiffStats(detail.info)
+            return
+        }
         guard let repo else { return }
         Task.detached {
             let stats = try? repo.diffStats(rev: rev)

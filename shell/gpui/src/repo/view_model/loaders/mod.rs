@@ -1,5 +1,6 @@
 mod diff;
 mod diff_compute;
+mod graph_stats;
 mod review_notes;
 
 use std::sync::Arc;
@@ -180,6 +181,8 @@ impl RepoViewModel {
                     .or(if changes.is_empty() { None } else { Some(0) });
                 self.graph.changes = Arc::new(changes);
                 self.graph.entries = Arc::new(entries);
+                self.retain_graph_diff_stats();
+                self.seed_working_copy_graph_diff_stats();
                 // Re-select even if the index is unchanged — file contents may have.
                 if let Some(ix) = new_selected {
                     self.select_change(ix, cx);

@@ -16,6 +16,10 @@ final class DiffStatsReloadScene: SceneBase {
             stats(app, insertions: 2, deletions: 0).waitForExistence(timeout: 10),
             "initial stats should reflect both new files"
         )
+        XCTAssertTrue(
+            dagStats(app, insertions: 2, deletions: 0).waitForExistence(timeout: 10),
+            "DAG row should show the same +2 lazily"
+        )
 
         // Restore one file to the parent: same change-id, new commit-id, one fewer insertion.
         let fileRow = app.descendants(matching: .any)
@@ -32,12 +36,22 @@ final class DiffStatsReloadScene: SceneBase {
             stats(app, insertions: 1, deletions: 0).waitForExistence(timeout: 10),
             "diff stats should reload after @ is amended"
         )
+        XCTAssertTrue(
+            dagStats(app, insertions: 1, deletions: 0).waitForExistence(timeout: 10),
+            "DAG row stats should follow the amended commit id"
+        )
     }
 
     private func stats(_ app: XCUIApplication, insertions: Int, deletions: Int) -> XCUIElement {
         let identifier = "detail.diffStats.\(insertions).\(deletions)"
         return app.descendants(matching: .any)
             .matching(NSPredicate(format: "identifier == %@", identifier))
+            .firstMatch
+    }
+
+    private func dagStats(_ app: XCUIApplication, insertions: Int, deletions: Int) -> XCUIElement {
+        app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'dag.diffStats.' AND identifier ENDSWITH '.%d.%d'", insertions, deletions))
             .firstMatch
     }
 }

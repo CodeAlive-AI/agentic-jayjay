@@ -36,6 +36,7 @@ impl RepoViewModel {
         if let Some(change) = self.graph.changes.get(ix).cloned() {
             self.ensure_avatar(change.author.email.clone(), cx);
             self.refresh_pr_info(&change, cx);
+            self.ensure_graph_diff_stats(&change, cx);
         }
 
         let (Some(repo), Some(change)) = (self.repo.clone(), self.graph.changes.get(ix).cloned())
@@ -53,19 +54,14 @@ impl RepoViewModel {
             {
                 let repo = repo.clone();
                 let rev = rev.clone();
-                async move {
-                    let detail = repo.show_summary(&rev);
-                    let stats = repo.diff_stats(&rev).ok();
-                    (detail, stats)
-                }
+                async move { repo.show_summary(&rev) }
             },
-            move |vm, (detail, stats), cx| {
+            move |vm, detail, cx| {
                 // Drop stale results from a superseded select_change.
                 if vm.loading.change_gen != generation {
                     return;
                 }
                 vm.loading.files = false;
-                vm.change_stats = stats;
                 match detail {
                     Ok(detail) => {
                         let files = Arc::new(detail.diff);

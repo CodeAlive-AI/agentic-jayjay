@@ -14,6 +14,8 @@ struct DetailView: View {
     var onClearCompare: (() -> Void)?
     var onReverseCompare: (() -> Void)?
     var onRevealChangeInDag: ((String) -> Void)?
+    var cachedDiffStats: DiffStats?
+    var onRequestDiffStats: ((ChangeInfo) -> Void)?
     @Binding var activePane: ActivePane
     var evologEntries: [EvologEntry]?
     var evologRev: String?
@@ -39,6 +41,8 @@ struct DetailView: View {
                 onClearCompare: onClearCompare,
                 onReverseCompare: onReverseCompare,
                 onRevealChangeInDag: onRevealChangeInDag,
+                cachedDiffStats: cachedDiffStats,
+                onRequestDiffStats: onRequestDiffStats,
                 activePane: $activePane
             )
             .id("\(detail.info.selectionRevision)|\(compareFromId ?? "")")

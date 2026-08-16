@@ -70,6 +70,14 @@ pub(super) fn sidebar(
                 let view_handle = view_handle.clone();
                 let dag_layout = dag_layout.clone();
                 let entries = entries.clone();
+                this.vm.update(cx, |vm, cx| {
+                    let end = range.end.min(change_count);
+                    for ix in range.start..end {
+                        if let Some(change) = vm.graph.changes.get(ix).cloned() {
+                            vm.ensure_graph_diff_stats(&change, cx);
+                        }
+                    }
+                });
                 range
                     .map(|ix| {
                         if ix == change_count {
@@ -77,6 +85,12 @@ pub(super) fn sidebar(
                         }
                         let is_selected = selected == Some(ix);
                         let change = changes_for_processor[ix].clone();
+                        let diff_stats = this
+                            .vm
+                            .read(cx)
+                            .graph_diff_stats
+                            .get(&change.commit_id.id)
+                            .cloned();
                         let is_compare_source =
                             compare_source_change_id.as_deref() == Some(change.change_id.as_str());
                         let on_click = cx.listener(move |view, event: &ClickEvent, _window, cx| {
@@ -148,6 +162,7 @@ pub(super) fn sidebar(
                                 ix,
                                 theme: &t,
                                 dag_col,
+                                diff_stats: diff_stats.as_ref(),
                             },
                             on_click,
                             on_right_click,
