@@ -15,8 +15,8 @@ use gpui::{Context, SharedString};
 use jayjay_core::dag::DagLayout;
 use jayjay_core::diff::FileDiff;
 use jayjay_core::{
-    AnnotationLine, BookmarkInfo, ChangeInfo, DEFAULT_REVSET_DEPTH, DiffHunk, DiffProjection,
-    DiffStats, GraphEntry, PrInfo, Repo, WorkspaceInfo, build_default_revset,
+    AnnotationLine, BookmarkInfo, ChangeInfo, ChangeLineCounts, DEFAULT_REVSET_DEPTH, DiffHunk,
+    DiffProjection, DiffStats, GraphEntry, PrInfo, Repo, WorkspaceInfo, build_default_revset,
 };
 use jayjay_markdown::MarkdownDocument;
 use jayjay_review::ReviewNoteStatus;
@@ -104,7 +104,7 @@ pub struct RepoViewModel {
     diff_load_failures: HashSet<String>,
     pub change_stats: Option<DiffStats>,
     pub working_copy_stats: Option<DiffStats>,
-    pub graph_diff_stats: HashMap<String, DiffStats>,
+    pub graph_diff_stats: HashMap<String, ChangeLineCounts>,
     graph_diff_stats_queue: VecDeque<(String, String)>,
     graph_diff_stats_in_flight: Option<String>,
     pub current_operation_description: String,

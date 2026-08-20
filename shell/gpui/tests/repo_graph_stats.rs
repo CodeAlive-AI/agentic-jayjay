@@ -2,7 +2,7 @@ mod harness;
 
 use gpui::TestAppContext;
 use harness::*;
-use jayjay_core::DiffStats;
+use jayjay_core::{ChangeLineCounts, LineCounts};
 use jj_test::{LinearFixture, run_jj_in};
 
 #[gpui::test]
@@ -23,8 +23,9 @@ fn working_copy_refresh_seeds_graph_line_counts(cx: &mut TestAppContext) {
             .cloned()
             .expect("working copy stats seeded from refresh")
     });
-    assert_eq!(stats.insertions, 2);
-    assert_eq!(stats.deletions, 0);
+    assert_eq!(stats.source.insertions, 2);
+    assert_eq!(stats.source.deletions, 0);
+    assert_eq!(stats.extra_total(), None);
 }
 
 #[gpui::test]
@@ -55,8 +56,8 @@ fn selecting_a_parent_fills_graph_line_counts(cx: &mut TestAppContext) {
             .cloned()
             .expect("selected parent stats")
     });
-    assert_eq!(stats.insertions, 1);
-    assert_eq!(stats.deletions, 0);
+    assert_eq!(stats.source.insertions, 1);
+    assert_eq!(stats.source.deletions, 0);
 }
 
 #[gpui::test]
@@ -93,10 +94,15 @@ fn refresh_drops_stats_for_commits_that_left_the_graph(cx: &mut TestAppContext) 
         view.view_model().update(_cx, |vm, _| {
             vm.graph_diff_stats.insert(
                 "deadbeef".into(),
-                DiffStats {
-                    files_changed: 1,
-                    insertions: 9,
-                    deletions: 3,
+                ChangeLineCounts {
+                    source: LineCounts {
+                        insertions: 9,
+                        deletions: 3,
+                    },
+                    total: LineCounts {
+                        insertions: 9,
+                        deletions: 3,
+                    },
                 },
             );
         });

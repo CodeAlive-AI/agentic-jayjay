@@ -9,8 +9,8 @@ use std::time::Duration;
 use gpui::{Context, SharedString};
 use jayjay_core::dag::DagLayout;
 use jayjay_core::{
-    BookmarkInfo, ChangeInfo, CoreResult, DEFAULT_REVSET_DEPTH, DiffStats, GraphEntry, Repo,
-    WorkspaceInfo, build_default_revset,
+    BookmarkInfo, ChangeInfo, ChangeLineCounts, CoreResult, DEFAULT_REVSET_DEPTH, DiffStats,
+    GraphEntry, Repo, WorkspaceInfo, build_default_revset,
 };
 
 use super::RepoViewModel;
@@ -182,7 +182,7 @@ impl RepoViewModel {
                 self.graph.changes = Arc::new(changes);
                 self.graph.entries = Arc::new(entries);
                 self.retain_graph_diff_stats();
-                self.seed_working_copy_graph_diff_stats();
+                self.seed_working_copy_graph_diff_stats(data.working_copy_line_counts);
                 // Re-select even if the index is unchanged — file contents may have.
                 if let Some(ix) = new_selected {
                     self.select_change(ix, cx);
@@ -250,6 +250,7 @@ struct RefreshData {
     workspaces: Vec<WorkspaceInfo>,
     pr_host_name: Option<String>,
     working_copy_stats: Option<DiffStats>,
+    working_copy_line_counts: Option<ChangeLineCounts>,
     current_operation_description: String,
 }
 
@@ -260,6 +261,7 @@ fn refresh_graph_blocking(repo: &Repo, revset: &str) -> CoreResult<RefreshData> 
     let workspaces = repo.workspace_list().unwrap_or_default();
     let pr_host_name = repo.pr_host_name();
     let working_copy_stats = repo.diff_stats("@").ok();
+    let working_copy_line_counts = repo.graph_line_stats("@").ok();
     let current_operation_description = repo.current_operation_description();
     Ok(RefreshData {
         entries,
@@ -267,6 +269,7 @@ fn refresh_graph_blocking(repo: &Repo, revset: &str) -> CoreResult<RefreshData> 
         workspaces,
         pr_host_name,
         working_copy_stats,
+        working_copy_line_counts,
         current_operation_description,
     })
 }

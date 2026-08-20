@@ -1,5 +1,5 @@
 use gpui::Context;
-use jayjay_core::{ChangeInfo, DiffStats};
+use jayjay_core::{ChangeInfo, ChangeLineCounts, DiffStats};
 
 use crate::repo::view_model::RepoViewModel;
 
@@ -45,20 +45,21 @@ impl RepoViewModel {
             .retain(|(commit_id, _)| live.contains(commit_id.as_str()));
     }
 
-    pub(in crate::repo) fn seed_working_copy_graph_diff_stats(&mut self) {
-        let Some(stats) = self.working_copy_stats.clone() else {
-            return;
-        };
-        if stats.insertions == 0 && stats.deletions == 0 && stats.files_changed == 0 {
+    pub(in crate::repo) fn seed_working_copy_graph_diff_stats(
+        &mut self,
+        counts: Option<ChangeLineCounts>,
+    ) {
+        let Some(counts) = counts else { return };
+        if counts.source.is_zero() && counts.total.is_zero() {
             return;
         }
         let Some(working_copy) = self.working_copy_change() else {
             return;
         };
-        self.store_graph_diff_stats(working_copy.commit_id.id.clone(), stats);
+        self.store_graph_diff_stats(working_copy.commit_id.id.clone(), counts);
     }
 
-    fn store_graph_diff_stats(&mut self, commit_id: String, stats: DiffStats) {
+    fn store_graph_diff_stats(&mut self, commit_id: String, stats: ChangeLineCounts) {
         if !self
             .graph
             .changes
@@ -71,12 +72,16 @@ impl RepoViewModel {
         self.graph_diff_stats.insert(commit_id, stats);
     }
 
-    fn apply_graph_diff_stats_to_selection(&mut self, commit_id: &str, stats: &DiffStats) {
+    fn apply_graph_diff_stats_to_selection(&mut self, commit_id: &str, stats: &ChangeLineCounts) {
         if self
             .selected_change()
             .is_some_and(|change| change.commit_id.id == commit_id)
         {
-            self.change_stats = Some(stats.clone());
+            self.change_stats = Some(DiffStats {
+                files_changed: 0,
+                insertions: stats.total.insertions,
+                deletions: stats.total.deletions,
+            });
         }
     }
 
@@ -93,7 +98,7 @@ impl RepoViewModel {
         self.graph_diff_stats_in_flight = Some(commit_id.clone());
         Self::background_update(
             cx,
-            async move { (commit_id, repo.diff_stats(&rev).ok()) },
+            async move { (commit_id, repo.graph_line_stats(&rev).ok()) },
             move |vm, (commit_id, stats), cx| {
                 vm.graph_diff_stats_in_flight = None;
                 if let Some(stats) = stats {

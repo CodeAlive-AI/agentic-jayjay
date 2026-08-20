@@ -72,15 +72,18 @@ extension ChangeDetailView {
         fileSelectionAnchorPath = fallbackPath
     }
 
-    func applyCachedDiffStats(_ stats: DiffStats?) {
+    func applyCachedDiffStats(_ stats: ChangeLineCounts?) {
         guard let stats else { return }
-        diffStats = stats
+        lineCounts = stats
+        diffStats = DiffStats(
+            filesChanged: 0,
+            insertions: stats.totalInsertions,
+            deletions: stats.totalDeletions
+        )
         diffStatsCommitId = detail.info.commitId.id
     }
 
     func loadDiffStats() {
-        let rev = detailRevision
-        // Key on commitId, not the (stable) changeId, so amends to a mutable change reload.
         let commitId = detail.info.commitId.id
         if let cachedDiffStats {
             applyCachedDiffStats(cachedDiffStats)
@@ -89,18 +92,8 @@ extension ChangeDetailView {
         guard diffStatsCommitId != commitId else { return }
         diffStatsCommitId = commitId
         diffStats = nil
-        if let onRequestDiffStats {
-            onRequestDiffStats(detail.info)
-            return
-        }
-        guard let repo else { return }
-        Task.detached {
-            let stats = try? repo.diffStats(rev: rev)
-            await MainActor.run {
-                guard diffStatsCommitId == commitId else { return }
-                diffStats = stats
-            }
-        }
+        lineCounts = nil
+        onRequestDiffStats?(detail.info)
     }
 
     func loadTrackedGitLfsPaths() {

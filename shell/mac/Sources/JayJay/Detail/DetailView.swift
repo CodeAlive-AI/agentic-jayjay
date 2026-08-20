@@ -14,7 +14,7 @@ struct DetailView: View {
     var onClearCompare: (() -> Void)?
     var onReverseCompare: (() -> Void)?
     var onRevealChangeInDag: ((String) -> Void)?
-    var cachedDiffStats: DiffStats?
+    var cachedDiffStats: ChangeLineCounts?
     var onRequestDiffStats: ((ChangeInfo) -> Void)?
     @Binding var activePane: ActivePane
     var evologEntries: [EvologEntry]?

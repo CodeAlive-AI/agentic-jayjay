@@ -14,7 +14,7 @@ struct DAGRow: View {
     var onBookmarkDragEnded: ((String, DragGesture.Value) -> Void)?
     var workspaceNames: [String] = []
     var isDisplayedWorkingCopy: Bool = false
-    var diffStats: DiffStats? = nil
+    var diffStats: ChangeLineCounts? = nil
 
     /// Non-private: read by the DAGRow+GraphColumn / +Refs extensions.
     var change: ChangeInfo {
@@ -53,15 +53,15 @@ struct DAGRow: View {
                     Text(change.author.name)
                     Text(relativeDate(change.author.timestampMillis)).foregroundStyle(.secondary)
                     Spacer(minLength: 6)
-                    if let diffStats, diffStats.insertions > 0 || diffStats.deletions > 0 {
-                        DiffLineCounts(insertions: diffStats.insertions, deletions: diffStats.deletions)
+                    if let diffStats, diffStats.hasVisibleCounts {
+                        DiffLineCounts(counts: diffStats)
                             .layoutPriority(1)
                             .accessibilityElement(children: .ignore)
                             .accessibilityIdentifier(
                                 AID.DAG.diffStats(
                                     changeIdPrefix: String(change.selectionRevision.prefix(12)),
-                                    insertions: diffStats.insertions,
-                                    deletions: diffStats.deletions
+                                    insertions: diffStats.sourceInsertions,
+                                    deletions: diffStats.sourceDeletions
                                 )
                             )
                     }

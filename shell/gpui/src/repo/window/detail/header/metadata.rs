@@ -2,7 +2,7 @@ use gpui::{
     AnyElement, ClipboardItem, Context, IntoElement, ParentElement, SharedString,
     StatefulInteractiveElement, Styled, div, px, rgb,
 };
-use jayjay_core::{ChangeInfo, DiffStats};
+use jayjay_core::{ChangeInfo, ChangeLineCounts};
 
 use crate::app::theme::{FONT_META, Theme};
 use crate::repo::RepoWindow;
@@ -14,7 +14,7 @@ const LABEL_WIDTH: f32 = 70.;
 
 pub(super) fn metadata_block(
     change: &ChangeInfo,
-    stats: Option<&DiffStats>,
+    stats: Option<&ChangeLineCounts>,
     recently_copied: Option<&SharedString>,
     t: &Theme,
     cx: &mut Context<RepoWindow>,
@@ -76,7 +76,9 @@ pub(super) fn metadata_block(
         metadata = metadata.child(bookmarks_row(&change.bookmarks, recently_copied, t, cx));
     }
 
-    if let Some(stats) = stats {
+    if let Some(stats) = stats
+        && (!stats.source.is_zero() || stats.extra_total().is_some())
+    {
         metadata = metadata.child(changes_row(stats, t));
     }
 
@@ -98,27 +100,39 @@ fn label_cell(label: &str, t: &Theme) -> AnyElement {
         .into_any_element()
 }
 
-fn changes_row(stats: &DiffStats, t: &Theme) -> AnyElement {
-    let inserted = format!("+{}", stats.insertions);
-    let deleted = format!("-{}", stats.deletions);
-    let value = div()
+fn changes_row(stats: &ChangeLineCounts, t: &Theme) -> AnyElement {
+    let mut value = div()
         .flex()
         .flex_row()
         .gap(px(8.))
         .items_baseline()
         .font_family(crate::app::fonts::mono())
         .font_weight(gpui::FontWeight::SEMIBOLD)
-        .text_size(px(11.))
-        .child(
+        .text_size(px(11.));
+    if stats.source.insertions > 0 {
+        value = value.child(
             div()
                 .text_color(rgb(t.diff_gutter_added_fg))
-                .child(SharedString::from(inserted)),
-        )
-        .child(
+                .child(SharedString::from(format!("+{}", stats.source.insertions))),
+        );
+    }
+    if stats.source.deletions > 0 {
+        value = value.child(
             div()
                 .text_color(rgb(t.diff_gutter_removed_fg))
-                .child(SharedString::from(deleted)),
+                .child(SharedString::from(format!("-{}", stats.source.deletions))),
         );
+    }
+    if let Some(total) = stats.extra_total() {
+        value = value.child(
+            div()
+                .text_color(rgb(t.fg_faint))
+                .font_weight(gpui::FontWeight::MEDIUM)
+                .child(SharedString::from(
+                    crate::repo::window::dag_row::extra_label(total),
+                )),
+        );
+    }
 
     div()
         .flex()

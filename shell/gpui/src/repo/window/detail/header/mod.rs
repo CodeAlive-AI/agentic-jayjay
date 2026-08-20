@@ -2,7 +2,7 @@ mod compare;
 mod metadata;
 
 use gpui::{AnyElement, Context, IntoElement, ParentElement, SharedString, Styled, div, px, rgb};
-use jayjay_core::{ChangeInfo, DiffStats};
+use jayjay_core::{ChangeInfo, ChangeLineCounts};
 
 use super::description::description_block;
 use crate::app::theme::Theme;
@@ -13,7 +13,7 @@ use metadata::metadata_block;
 
 pub(super) struct DetailHeaderState<'a> {
     pub change: &'a ChangeInfo,
-    pub stats: Option<&'a DiffStats>,
+    pub stats: Option<&'a ChangeLineCounts>,
     pub compare: Option<&'a CompareState>,
     pub file_count: Option<usize>,
     pub recently_copied: Option<&'a SharedString>,

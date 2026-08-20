@@ -11,7 +11,7 @@ extension RepoViewModel {
         pumpGraphDiffStats()
     }
 
-    func storeGraphDiffStats(commitId: String, stats: DiffStats) {
+    func storeGraphDiffStats(commitId: String, stats: ChangeLineCounts) {
         guard graphEntries.contains(where: { $0.change.commitId.id == commitId }) else { return }
         graphDiffStats[commitId] = stats
     }
@@ -23,11 +23,10 @@ extension RepoViewModel {
     }
 
     func seedWorkingCopyGraphDiffStats() {
-        guard let stats = workingCopyStats,
-              stats.insertions > 0 || stats.deletions > 0 || stats.filesChanged > 0,
-              let workingCopy = graphEntries.first(where: { $0.change.isWorkingCopy })
+        guard let workingCopy = graphEntries.first(where: { $0.change.isWorkingCopy }),
+              !workingCopy.change.isEmpty
         else { return }
-        graphDiffStats[workingCopy.change.commitId.id] = stats
+        requestGraphDiffStats(for: workingCopy.change)
     }
 
     func pumpGraphDiffStats() {
@@ -36,11 +35,12 @@ extension RepoViewModel {
         let next = graphDiffStatsQueued.removeFirst()
         graphDiffStatsInFlight = next.commitId
         graphDiffStatsTask = Task.detached { [repo] in
-            let stats = try? repo.diffStats(rev: next.rev)
+            let counts = (try? repo.diffFileStats(rev: next.rev, ignoreWhitespace: false))
+                .map(ChangeLineCounts.from(fileStats:))
             await MainActor.run { [weak self] in
                 guard let self else { return }
-                if let stats {
-                    self.storeGraphDiffStats(commitId: next.commitId, stats: stats)
+                if let counts {
+                    self.storeGraphDiffStats(commitId: next.commitId, stats: counts)
                 }
                 self.graphDiffStatsInFlight = nil
                 self.graphDiffStatsTask = nil

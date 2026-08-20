@@ -21,9 +21,9 @@ final class GraphDiffStatsTests: RepoViewModelTestCase {
         try await refresh(viewModel)
 
         let workingCopy = try XCTUnwrap(viewModel.graphEntries.first(where: { $0.change.isWorkingCopy }))
-        let stats = try XCTUnwrap(viewModel.graphDiffStats[workingCopy.change.commitId.id])
-        XCTAssertEqual(stats.insertions, 1)
-        XCTAssertEqual(stats.deletions, 0)
+        let stats = try await waitForStats(viewModel, commitId: workingCopy.change.commitId.id)
+        XCTAssertEqual(stats.sourceInsertions, 1)
+        XCTAssertEqual(stats.sourceDeletions, 0)
     }
 
     func testRequestLoadsStatsForAHistoricalChange() async throws {
@@ -44,13 +44,18 @@ final class GraphDiffStatsTests: RepoViewModelTestCase {
         )
         viewModel.requestGraphDiffStats(for: described.change)
         let stats = try await waitForStats(viewModel, commitId: described.change.commitId.id)
-        XCTAssertEqual(stats.insertions, 1)
-        XCTAssertEqual(stats.deletions, 0)
+        XCTAssertEqual(stats.sourceInsertions, 1)
+        XCTAssertEqual(stats.sourceDeletions, 0)
     }
 
     func testRefreshDropsStatsForCommitsThatLeftTheGraph() async throws {
         let viewModel = try XCTUnwrap(viewModel)
-        viewModel.graphDiffStats["deadbeef"] = DiffStats(filesChanged: 1, insertions: 9, deletions: 3)
+        viewModel.graphDiffStats["deadbeef"] = ChangeLineCounts(
+            sourceInsertions: 9,
+            sourceDeletions: 3,
+            totalInsertions: 9,
+            totalDeletions: 3
+        )
         try await refresh(viewModel)
         XCTAssertNil(viewModel.graphDiffStats["deadbeef"])
     }
@@ -63,7 +68,7 @@ final class GraphDiffStatsTests: RepoViewModelTestCase {
         XCTAssertFalse(viewModel.isRefreshingInFlight)
     }
 
-    private func waitForStats(_ viewModel: RepoViewModel, commitId: String) async throws -> DiffStats {
+    private func waitForStats(_ viewModel: RepoViewModel, commitId: String) async throws -> ChangeLineCounts {
         for _ in 0 ..< 100 {
             if let stats = viewModel.graphDiffStats[commitId] {
                 return stats
@@ -71,6 +76,6 @@ final class GraphDiffStatsTests: RepoViewModelTestCase {
             try await Task.sleep(for: .milliseconds(20))
         }
         XCTFail("timed out waiting for graph diff stats")
-        return DiffStats(filesChanged: 0, insertions: 0, deletions: 0)
+        return ChangeLineCounts()
     }
 }

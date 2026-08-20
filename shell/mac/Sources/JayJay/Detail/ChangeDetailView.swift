@@ -14,7 +14,7 @@ struct ChangeDetailView: View {
     var onClearCompare: (() -> Void)?
     var onReverseCompare: (() -> Void)?
     var onRevealChangeInDag: ((String) -> Void)?
-    var cachedDiffStats: DiffStats?
+    var cachedDiffStats: ChangeLineCounts?
     var onRequestDiffStats: ((ChangeInfo) -> Void)?
     @Binding var activePane: ActivePane
 
@@ -47,6 +47,7 @@ struct ChangeDetailView: View {
     @State var hideReviewedFiles = false
     @State var showNotedFilesOnly = false
     @State var diffStats: DiffStats?
+    @State var lineCounts: ChangeLineCounts?
     @State var paneMode: DetailPaneMode = .files
     @State var paneBeforeDiffEdit: ActivePane?
     @State var conflictedPaths: Set<String> = []

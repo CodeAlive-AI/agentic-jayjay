@@ -22,8 +22,8 @@ final class RepoViewModel: ChangeActions, DAGActions, BookmarkActions {
     /// Change ID the commit-box draft belongs to; when @ moves to a described change, the draft is reseeded from that description.
     var workingCopyChangeId: String = ""
     var workingCopyStats: DiffStats?
-    /// Per-commit `jj diff --stat` totals for DAG rows, keyed by commit id so an amend cannot keep stale +/−.
-    var graphDiffStats: [String: DiffStats] = [:]
+    /// Per-commit source/total line counts for DAG rows, keyed by commit id so an amend cannot keep stale +/−.
+    var graphDiffStats: [String: ChangeLineCounts] = [:]
     var graphDiffStatsQueued: [(commitId: String, rev: String)] = []
     var graphDiffStatsInFlight: String?
     var graphDiffStatsTask: Task<Void, Never>?

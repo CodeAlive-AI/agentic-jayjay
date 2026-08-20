@@ -6,7 +6,7 @@ use gpui::{
     MouseDownEvent, ParentElement, SharedString, StatefulInteractiveElement, Styled, Window, div,
     px, rgb,
 };
-use jayjay_core::{ChangeInfo, CommitAuthor, DiffStats};
+use jayjay_core::{ChangeInfo, ChangeLineCounts, CommitAuthor};
 
 use crate::app::theme::{FONT_BODY, FONT_ID, FONT_META, FONT_TAG, Theme};
 use crate::ui::icons::glyph;
@@ -29,7 +29,7 @@ pub(super) struct DagRow<'a> {
     pub ix: usize,
     pub theme: &'a Theme,
     pub dag_col: Option<AnyElement>,
-    pub diff_stats: Option<&'a DiffStats>,
+    pub diff_stats: Option<&'a ChangeLineCounts>,
 }
 
 pub(super) fn dag_row<F, FR>(
@@ -268,7 +268,11 @@ fn summary_line(summary: &str, t: &Theme) -> impl IntoElement {
     }
 }
 
-fn meta_row(author: &CommitAuthor, stats: Option<&DiffStats>, t: &Theme) -> impl IntoElement {
+fn meta_row(
+    author: &CommitAuthor,
+    stats: Option<&ChangeLineCounts>,
+    t: &Theme,
+) -> impl IntoElement {
     let mut row = div()
         .flex()
         .flex_row()
@@ -295,9 +299,10 @@ fn meta_row(author: &CommitAuthor, stats: Option<&DiffStats>, t: &Theme) -> impl
     row
 }
 
-fn loc_counts(stats: Option<&DiffStats>, t: &Theme) -> Option<AnyElement> {
+fn loc_counts(stats: Option<&ChangeLineCounts>, t: &Theme) -> Option<AnyElement> {
     let stats = stats?;
-    if stats.insertions == 0 && stats.deletions == 0 {
+    let extra = stats.extra_total();
+    if stats.source.is_zero() && extra.is_none() {
         return None;
     }
     let mut counts = div()
@@ -308,21 +313,38 @@ fn loc_counts(stats: Option<&DiffStats>, t: &Theme) -> Option<AnyElement> {
         .font_family(crate::app::fonts::mono())
         .font_weight(gpui::FontWeight::SEMIBOLD)
         .flex_shrink_0();
-    if stats.insertions > 0 {
+    if stats.source.insertions > 0 {
         counts = counts.child(
             div()
                 .text_color(rgb(t.diff_gutter_added_fg))
-                .child(SharedString::from(format!("+{}", stats.insertions))),
+                .child(SharedString::from(format!("+{}", stats.source.insertions))),
         );
     }
-    if stats.deletions > 0 {
+    if stats.source.deletions > 0 {
         counts = counts.child(
             div()
                 .text_color(rgb(t.diff_gutter_removed_fg))
-                .child(SharedString::from(format!("-{}", stats.deletions))),
+                .child(SharedString::from(format!("-{}", stats.source.deletions))),
+        );
+    }
+    if let Some(total) = extra {
+        counts = counts.child(
+            div()
+                .text_color(rgb(t.fg_faint))
+                .font_weight(gpui::FontWeight::MEDIUM)
+                .child(SharedString::from(extra_label(total))),
         );
     }
     Some(counts.into_any_element())
+}
+
+pub(crate) fn extra_label(total: jayjay_core::LineCounts) -> String {
+    match (total.insertions > 0, total.deletions > 0) {
+        (true, true) => format!("(+{} -{})", total.insertions, total.deletions),
+        (true, false) => format!("(+{})", total.insertions),
+        (false, true) => format!("(-{})", total.deletions),
+        (false, false) => "(+0)".to_owned(),
+    }
 }
 
 pub(super) fn format_when(ts_millis: i64) -> String {

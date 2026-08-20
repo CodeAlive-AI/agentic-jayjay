@@ -39,7 +39,16 @@ extension ChangeDetailView {
                     }
                 }
             }
-            if let stats = diffStats, stats.insertions > 0 || stats.deletions > 0 {
+            if let counts = lineCounts, counts.hasVisibleCounts {
+                HStack(spacing: 4) {
+                    Text("Changes").jayjayFont(11).foregroundStyle(.secondary).frame(width: 70, alignment: .trailing)
+                    DiffLineCounts(counts: counts, size: 11)
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityIdentifier(
+                    AID.Detail.diffStats(insertions: counts.sourceInsertions, deletions: counts.sourceDeletions)
+                )
+            } else if let stats = diffStats, stats.insertions > 0 || stats.deletions > 0 {
                 HStack(spacing: 4) {
                     Text("Changes").jayjayFont(11).foregroundStyle(.secondary).frame(width: 70, alignment: .trailing)
                     DiffLineCounts(insertions: stats.insertions, deletions: stats.deletions, size: 11)

@@ -24,7 +24,7 @@ struct DAGView: View {
     var workspaces: [WorkspaceInfo] = []
     /// `@` chip follows the opened path, not the last clicked sidebar row.
     var displayedWorkingCopyCommitId: String? = nil
-    var diffStatsByCommitId: [String: DiffStats] = [:]
+    var diffStatsByCommitId: [String: ChangeLineCounts] = [:]
     var onRequestDiffStats: ((ChangeInfo) -> Void)? = nil
 
     @State private var contextTargetId: String?
@@ -62,7 +62,7 @@ struct DAGView: View {
         onLoadMore: (() -> Void)? = nil,
         workspaces: [WorkspaceInfo] = [],
         displayedWorkingCopyCommitId: String? = nil,
-        diffStatsByCommitId: [String: DiffStats] = [:],
+        diffStatsByCommitId: [String: ChangeLineCounts] = [:],
         onRequestDiffStats: ((ChangeInfo) -> Void)? = nil
     ) {
         self.entries = entries

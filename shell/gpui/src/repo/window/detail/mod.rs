@@ -30,7 +30,9 @@ pub(super) fn detail_pane(
             .into_any_element();
     };
 
-    let stats = vm.change_stats.clone();
+    let line_counts = vm
+        .selected_change()
+        .and_then(|change| vm.graph_diff_stats.get(&change.commit_id.id).copied());
     let view_mode = vm.view_mode;
     let detail_mode = vm.detail_mode;
     let annotate_lines = vm.annotate_lines.clone();
@@ -112,7 +114,7 @@ pub(super) fn detail_pane(
         .child(detail_header(
             DetailHeaderState {
                 change: &change,
-                stats: stats.as_ref(),
+                stats: line_counts.as_ref(),
                 compare: compare.as_ref(),
                 file_count,
                 recently_copied: view.feedback.recently_copied.as_ref(),

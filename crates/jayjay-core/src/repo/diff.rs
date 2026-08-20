@@ -234,6 +234,11 @@ impl Repo {
         self.show_file_rename_with_mode(rev, old_path, new_path, DiffProjectionMode::Raw)
     }
 
+    pub fn graph_line_stats(&self, rev: &str) -> CoreResult<ChangeLineCounts> {
+        let files = self.diff_file_stats(rev, false)?;
+        Ok(ChangeLineCounts::from_file_stats(&files))
+    }
+
     pub fn diff_stats(&self, rev: &str) -> CoreResult<DiffStats> {
         let output = self.run_jj(&["--ignore-working-copy", "diff", "--stat", "-r", rev])?;
         // Summary line shape: "N files changed, I insertions(+), D deletions(-)".
